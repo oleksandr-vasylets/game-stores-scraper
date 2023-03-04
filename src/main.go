@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 )
@@ -21,51 +22,66 @@ type AppListResponse struct {
 	} `json:"applist"`
 }
 
-func getAppId(name string) (uint32, error) {
-	resp, err := http.Get("http://api.steampowered.com/ISteamApps/GetAppList/v2/")
+func getPrice(name string) (string, error) {
+	resp, err := http.Get("https://api.steampowered.com/ISteamApps/GetAppList/v2/")
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
 	var appList AppListResponse
 	err = json.Unmarshal(body, &appList)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
 	type app struct {
-		id   uint32
-		dist int
+		dist  int
+		price string
 	}
 
-	// Find the closest matches to the user's input using Levenshtein distance.
+	// Find exact match or the closest matches to the user's input using Levenshtein distance.
 	matches := make(map[string]app)
 	for _, elem := range appList.List.Apps {
+		if strings.ToLower(elem.Name) == strings.ToLower(name) {
+			price, err := fetchPrice(elem.AppId)
+			if err != nil {
+				return "", err
+			}
+			if price != "" {
+				return price, nil
+			}
+		}
 		dist := levenshtein.DistanceForStrings([]rune(elem.Name), []rune(name), levenshtein.DefaultOptions)
-		if dist <= len(name)/2 {
-			matches[elem.Name] = app{elem.AppId, dist}
+		if dist <= len(name)/2 || strings.Contains(strings.ToLower(elem.Name), strings.ToLower(name)) {
+			price, err := fetchPrice(elem.AppId)
+			if err != nil {
+				return "", err
+			}
+			if price != "" {
+				matches[elem.Name] = app{dist, price}
+			}
 		}
 	}
 
 	if len(matches) == 0 {
-		return 0, fmt.Errorf("Game not found!")
+		return "", fmt.Errorf("No matches found! Try more specific name.")
 	}
 
 	// Sort the matches by distance.
 	type match struct {
-		name string
-		id   uint32
-		dist int
+		name  string
+		price string
+		dist  int
 	}
 	var sortedMatches []match
 	for name, elem := range matches {
-		sortedMatches = append(sortedMatches, match{name, elem.id, elem.dist})
+		sortedMatches = append(sortedMatches, match{name, elem.price, elem.dist})
 	}
 	sort.Slice(sortedMatches, func(i, j int) bool {
 		return sortedMatches[i].dist < sortedMatches[j].dist
@@ -74,7 +90,7 @@ func getAppId(name string) (uint32, error) {
 	// Display the closest matches to the user's input.
 	fmt.Println("Closest matches:")
 	for i, m := range sortedMatches {
-		fmt.Printf("%d. %s (distance %d)\n", i+1, m.name, m.dist)
+		fmt.Printf("%d. %s\n", i+1, m.name)
 	}
 
 	// Ask the user to select a game from the closest matches.
@@ -85,17 +101,17 @@ func getAppId(name string) (uint32, error) {
 		scanner.Scan()
 		if scanner.Err() != nil {
 			fmt.Fprintln(os.Stderr, scanner.Err().Error())
-			return 0, scanner.Err()
+			return "", scanner.Err()
 		}
 		selectedGame = scanner.Text()
 
 		// Find the appid for the selected game.
 		for _, app := range sortedMatches {
 			if app.name == selectedGame {
-				return app.id, nil
+				return app.price, nil
 			}
 		}
-		fmt.Println("No such game in the list! Please, try again")
+		fmt.Println("No such game in the list! Please, try again.")
 	}
 }
 
@@ -107,8 +123,8 @@ type PriceResponse struct {
 	} `json:"data"`
 }
 
-func getPrice(appId string) (string, error) {
-	url := fmt.Sprintf("https://store.steampowered.com/api/appdetails?appids=%s&filters=price_overview", appId)
+func fetchPrice(appId uint32) (string, error) {
+	url := fmt.Sprintf("https://store.steampowered.com/api/appdetails?appids=%d&filters=price_overview", appId)
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", err
@@ -126,12 +142,13 @@ func getPrice(appId string) (string, error) {
 		return "", err
 	}
 
-	var data PriceResponse
-	err = json.Unmarshal(obj[appId], &data)
+	var priceResp PriceResponse
+	err = json.Unmarshal(obj[fmt.Sprint(appId)], &priceResp)
 	if err != nil {
-		return "", err
+		return "", nil
 	}
-	return data.Data.PriceOverview.Price, nil
+
+	return priceResp.Data.PriceOverview.Price, nil
 }
 
 func main() {
@@ -144,16 +161,11 @@ func main() {
 	}
 	name = scanner.Text()
 
-	appId, err := getAppId(name)
+	price, err := getPrice(name)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return
 	}
-	fmt.Println(appId)
-	price, err := getPrice(fmt.Sprint(appId))
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	}
 
-	fmt.Printf(price)
+	fmt.Println("Price:", price)
 }
