@@ -44,19 +44,14 @@ func getPrice(name string) (string, error) {
 		if len(appIds) >= 100 {
 			break
 		}
-		if strings.ToLower(elem.Name) == strings.ToLower(name) {
-			prices, err := fetchPrices([]string{fmt.Sprint(elem.AppId)})
-			if err != nil {
-				return "", err
-			}
-			if prices[0] != "" {
-				return prices[0], nil
-			}
-		}
 		if strings.Contains(strings.ToLower(elem.Name), strings.ToLower(name)) {
 			matches = append(matches, elem.Name)
 			appIds = append(appIds, fmt.Sprint(elem.AppId))
 		}
+	}
+
+	if len(appIds) == 0 {
+		return "", fmt.Errorf("No matches found! Try more specific name.")
 	}
 
 	prices, err := fetchPrices(appIds)
@@ -74,10 +69,6 @@ func getPrice(name string) (string, error) {
 		if price != "" {
 			apps = append(apps, app{matches[j], price})
 		}
-	}
-
-	if len(apps) == 0 {
-		return "", fmt.Errorf("No matches found! Try more specific name.")
 	}
 
 	// Sort the matches by name.
