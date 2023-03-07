@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/tebeka/selenium"
 	"github.com/tebeka/selenium/chrome"
@@ -51,8 +50,17 @@ func main() {
 	}
 	defer driver.Quit()
 
-	driver.SetImplicitWaitTimeout(100 * time.Millisecond)
 	driver.Get("https://store.epicgames.com/en-US/p/assassins-creed-1")
+	err = driver.Wait(func(wd selenium.WebDriver) (bool, error) {
+		_, err := driver.FindElement(selenium.ByID, "_schemaOrgMarkup-Product")
+		if err == nil {
+			return true, nil
+		}
+		return false, nil
+	})
+	if err != nil {
+		panic(err)
+	}
 	div, err := driver.FindElement(selenium.ByID, "_schemaOrgMarkup-Product")
 	if err != nil {
 		panic(err)
