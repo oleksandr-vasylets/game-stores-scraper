@@ -10,7 +10,7 @@ import (
 )
 
 func GetPrice(slug string) (string, error) {
-	url := fmt.Sprintf("https://store.epicgames.com/en-US/p/%s", slug)
+	url := fmt.Sprintf("https://store.epicgames.com/p/%s", slug)
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", err

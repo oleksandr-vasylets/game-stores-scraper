@@ -2,6 +2,7 @@ module web-scraper
 
 go 1.20
 
-require github.com/tebeka/selenium v0.9.9
-
-require github.com/blang/semver v3.5.1+incompatible // indirect
+require (
+	github.com/machinebox/graphql v0.2.2 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+)
