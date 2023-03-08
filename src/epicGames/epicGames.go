@@ -1,71 +1,91 @@
 package epicGames
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"net/http"
+	"context"
 	"regexp"
 	"strings"
+
+	"github.com/machinebox/graphql"
 )
 
-func GetPrice(slug string) (string, error) {
-	url := fmt.Sprintf("https://store.epicgames.com/p/%s", slug)
-	resp, err := http.Get(url)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	// TODO: Load the entire page with all JavaScipt code executed
-
-	text := string(body)
-	const sectionName = "priceSpecification\":{\"price\":\""
-	startOfPrice := strings.Index(text, sectionName)
-	if startOfPrice == -1 {
-		return "", fmt.Errorf("Price not found on HTML page!")
-	}
-	endOfPrice := strings.Index(text[startOfPrice+len(sectionName):], ",")
-	if endOfPrice == -1 {
-		return "", fmt.Errorf("Price not found on HTML page!")
-	}
-	return text[startOfPrice+1 : endOfPrice], nil
+type GameInfo struct {
+	Title string
+	Price string
 }
 
-func GetSlugs(name string) ([]string, error) {
-	url := "https://store-content.ak.epicgames.com/api/content/productmapping"
-	resp, err := http.Get(url)
+func GetInfo(title string) ([]GameInfo, error) {
+	client := graphql.NewClient("https://graphql.epicgames.com/graphql")
+
+	query := `
+	  query searchStoreQuery($allowCountries: String, $count: Int, $country: String!, $keywords: String, $locale: String, $sortBy: String, $sortDir: String, $withPrice: Boolean = false, $freeGame: Boolean) {
+	    Catalog {
+		  searchStore(
+			allowCountries: $allowCountries
+			count: $count
+			country: $country
+			keywords: $keywords
+			locale: $locale
+			sortBy: $sortBy
+			sortDir: $sortDir
+			freeGame: $freeGame
+		  ) {
+		    elements {
+			  title
+			  price(country: $country) @include(if: $withPrice) {
+				totalPrice {
+				  fmtPrice(locale: $locale) {
+					originalPrice
+					discountPrice
+				  }
+				}
+			  }
+			}	
+		  }
+		}
+	  }`
+
+	req := graphql.NewRequest(query)
+	req.Var("keywords", title)
+	req.Var("country", "US")
+	req.Var("allowCountries", "US")
+	req.Var("locale", "en-US")
+	req.Var("withPrice", true)
+	req.Var("withMapping", true)
+	req.Var("freeGame", false)
+	req.Var("count", 100)
+
+	type Response struct {
+		Catalog struct {
+			SearchStore struct {
+				Elements []struct {
+					Title string `json:"title"`
+					Price struct {
+						TotalPrice struct {
+							Formatted struct {
+								DiscountPrice string `json:"discountPrice"`
+							} `json:"fmtPrice"`
+						} `json:"totalPrice"`
+					} `json:"price"`
+				} `json:"elements"`
+			} `json:"searchStore"`
+		} `json:"catalog"`
+	}
+
+	var response Response
+	err := client.Run(context.Background(), req, &response)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
+	regex := regexp.MustCompile("[^a-z0-9 ]+")
+	title = regex.ReplaceAllString(strings.ToLower(title), "")
 
-	var data map[string]string
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		return nil, err
-	}
-
-	regex := regexp.MustCompile("[^a-zA-Z0-9 ]+")
-	name = regex.ReplaceAllString(name, "")
-	formattedName := strings.Join(strings.Split(strings.ToLower(name), " "), "-")
-
-	slugs := make([]string, 0)
-	for _, slug := range data {
-		if strings.Contains(slug, formattedName) {
-			slugs = append(slugs, slug)
+	games := make([]GameInfo, 0, len(response.Catalog.SearchStore.Elements))
+	for _, elem := range response.Catalog.SearchStore.Elements {
+		formatted := regex.ReplaceAllString(strings.ToLower(elem.Title), "")
+		if strings.Contains(formatted, title) {
+			games = append(games, GameInfo{elem.Title, elem.Price.TotalPrice.Formatted.DiscountPrice})
 		}
 	}
-
-	return slugs, nil
+	return games, nil
 }
