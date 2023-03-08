@@ -29,7 +29,7 @@ func GetInfo(title string) ([]common.GameInfo, error) {
 		return nil, err
 	}
 
-	type AppListResponse struct {
+	type Response struct {
 		List struct {
 			Apps []struct {
 				AppId uint32 `json:"appid"`
@@ -38,8 +38,8 @@ func GetInfo(title string) ([]common.GameInfo, error) {
 		} `json:"applist"`
 	}
 
-	var appList AppListResponse
-	err = json.Unmarshal(body, &appList)
+	var response Response
+	err = json.Unmarshal(body, &response)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func GetInfo(title string) ([]common.GameInfo, error) {
 	}
 
 	matches := make([]Match, 0)
-	for _, elem := range appList.List.Apps {
+	for _, elem := range response.List.Apps {
 		if len(matches) == common.MaxCount {
 			break
 		}
@@ -119,7 +119,7 @@ func fetchPrices(appIds []string) ([]string, error) {
 		} `json:"data"`
 	}
 
-	locale := currency.NewLocale("uk") // TODO: Replace this with actual user locale
+	locale := currency.NewLocale(common.Locale)
 	formatter := currency.NewFormatter(locale)
 
 	prices := make([]string, len(appIds))

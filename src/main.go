@@ -6,6 +6,7 @@ import (
 	"os"
 	"sort"
 	"web-scraper/epicGames"
+	"web-scraper/gog"
 	"web-scraper/steam"
 
 	"github.com/rodaine/table"
@@ -17,10 +18,13 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
 	if scanner.Err() != nil {
-		fmt.Fprintln(os.Stderr, scanner.Err().Error())
+		fmt.Fprintln(os.Stderr, scanner.Err())
 		return
 	}
 	title = scanner.Text()
+	if title == "" {
+		return
+	}
 
 	epicGamesResult, err := epicGames.GetInfo(title)
 	if err != nil {
@@ -40,45 +44,59 @@ func main() {
 		return steamResult[x].FormattedTitle < steamResult[y].FormattedTitle
 	})
 
-	type Row struct {
-		Title       string
-		FirstPrice  string
-		SecondPrice string
+	gogResult, err := gog.GetInfo(title)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
 	}
+	sort.Slice(gogResult, func(x, y int) bool {
+		return gogResult[x].FormattedTitle < gogResult[y].FormattedTitle
+	})
 
-	combined := make([]Row, 0, len(epicGamesResult)+len(steamResult))
-	i, j := 0, 0
-	for i < len(epicGamesResult) && j < len(steamResult) {
-		l := epicGamesResult[i]
-		r := steamResult[j]
-		if l.FormattedTitle < r.FormattedTitle {
-			combined = append(combined, Row{Title: l.Title, FirstPrice: l.Price, SecondPrice: "--"})
-			i++
-			continue
-		} else if r.FormattedTitle < l.FormattedTitle {
-			combined = append(combined, Row{Title: r.Title, FirstPrice: "--", SecondPrice: r.Price})
-			j++
-			continue
+	data := make(map[string][]string)
+
+	for _, game := range epicGamesResult {
+		if entry, ok := data[game.FormattedTitle]; ok {
+			entry[1] = game.Price
+		} else {
+			data[game.FormattedTitle] = []string{game.Title, game.Price, "--", "--"}
 		}
-		combined = append(combined, Row{Title: l.Title, FirstPrice: l.Price, SecondPrice: r.Price})
-		i++
-		j++
 	}
 
-	for i < len(epicGamesResult) {
-		combined = append(combined, Row{Title: epicGamesResult[i].Title, FirstPrice: epicGamesResult[i].Price, SecondPrice: "--"})
-		i++
+	for _, game := range steamResult {
+		if entry, ok := data[game.FormattedTitle]; ok {
+			entry[2] = game.Price
+		} else {
+			data[game.FormattedTitle] = []string{game.Title, "--", game.Price, "--"}
+		}
 	}
 
-	for j < len(steamResult) {
-		combined = append(combined, Row{Title: steamResult[j].Title, FirstPrice: "--", SecondPrice: steamResult[j].Price})
-		j++
+	for _, game := range gogResult {
+		if entry, ok := data[game.FormattedTitle]; ok {
+			entry[3] = game.Price
+		} else {
+			data[game.FormattedTitle] = []string{game.Title, "--", "--", game.Price}
+		}
 	}
 
-	tbl := table.New("#", "Title", "Epic Games Store", "Steam")
+	var keyValuePairs []struct {
+		Key   string
+		Value []string
+	}
+	for key, value := range data {
+		keyValuePairs = append(keyValuePairs, struct {
+			Key   string
+			Value []string
+		}{key, value})
+	}
 
-	for i, game := range combined {
-		tbl.AddRow(i+1, game.Title, game.FirstPrice, game.SecondPrice)
+	sort.Slice(keyValuePairs, func(i, j int) bool {
+		return keyValuePairs[i].Value[0] < keyValuePairs[j].Value[0]
+	})
+
+	tbl := table.New("#", "Title", "Epic Games Store", "Steam", "GOG")
+
+	for i, entry := range keyValuePairs {
+		tbl.AddRow(i+1, entry.Value[0], entry.Value[1], entry.Value[2], entry.Value[3])
 	}
 
 	tbl.Print()

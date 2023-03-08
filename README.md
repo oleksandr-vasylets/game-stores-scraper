@@ -1,6 +1,6 @@
 ## Game stores web scraper
 
-A simple CLI web scraper for fetching latest prices of games from different online game stores (Epic Games Store, Steam, etc.)
+A simple CLI web scraper for fetching latest prices of games from different online game stores (Epic Games Store, Steam, GOG)
 
 The functionality is very basic so far:
 

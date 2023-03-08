@@ -42,9 +42,9 @@ func GetInfo(title string) ([]common.GameInfo, error) {
 
 	req := graphql.NewRequest(query)
 	req.Var("keywords", title)
-	req.Var("country", "UA") // TODO: Replace these with actual user country and locale
-	req.Var("allowCountries", "UA")
-	req.Var("locale", "uk")
+	req.Var("country", strings.ToUpper(common.CountryCode))
+	req.Var("allowCountries", strings.ToUpper(common.CountryCode))
+	req.Var("locale", common.Locale)
 	req.Var("withPrice", true)
 	req.Var("withMapping", true)
 	req.Var("freeGame", false)
