@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 	"web-scraper/common"
+
+	"github.com/bojanz/currency"
 )
 
 func GetInfo(title string) ([]common.GameInfo, error) {
@@ -106,20 +108,25 @@ func fetchPrices(appIds []string) ([]string, error) {
 	type PriceResponse struct {
 		Data struct {
 			PriceOverview struct {
-				Price string `json:"final_formatted"`
+				CurrencyCode string `json:"currency"`
+				Price        int64  `json:"final"`
 			} `json:"price_overview"`
 		} `json:"data"`
 	}
+
+	locale := currency.NewLocale("uk") // TODO: Replace this with actual user locale
+	formatter := currency.NewFormatter(locale)
 
 	prices := make([]string, len(appIds))
 	for i, appId := range appIds {
 		var priceResponse PriceResponse
 		err = json.Unmarshal(obj[appId], &priceResponse)
-		if err != nil {
+		if err != nil || priceResponse.Data.PriceOverview.Price == 0 {
 			prices[i] = ""
 			continue
 		}
-		prices[i] = priceResponse.Data.PriceOverview.Price
+		amount, _ := currency.NewAmountFromInt64(priceResponse.Data.PriceOverview.Price, priceResponse.Data.PriceOverview.CurrencyCode)
+		prices[i] = formatter.Format(amount)
 	}
 
 	return prices, nil

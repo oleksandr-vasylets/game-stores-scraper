@@ -44,7 +44,7 @@ func GetInfo(title string) ([]common.GameInfo, error) {
 	req.Var("keywords", title)
 	req.Var("country", "UA")
 	req.Var("allowCountries", "UA")
-	req.Var("locale", "ua-UA")
+	req.Var("locale", "uk")
 	req.Var("withPrice", true)
 	req.Var("withMapping", true)
 	req.Var("freeGame", false)
