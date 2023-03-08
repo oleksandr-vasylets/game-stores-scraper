@@ -66,12 +66,12 @@ func main() {
 	}
 
 	for i < len(epicGamesResult) {
-		combined = append(combined, Row{Title: epicGamesResult[i].Title, FirstPrice: epicGamesResult[i].Price, SecondPrice: ""})
+		combined = append(combined, Row{Title: epicGamesResult[i].Title, FirstPrice: epicGamesResult[i].Price, SecondPrice: "--"})
 		i++
 	}
 
 	for j < len(steamResult) {
-		combined = append(combined, Row{Title: steamResult[j].Title, FirstPrice: "", SecondPrice: steamResult[j].Price})
+		combined = append(combined, Row{Title: steamResult[j].Title, FirstPrice: "--", SecondPrice: steamResult[j].Price})
 		j++
 	}
 

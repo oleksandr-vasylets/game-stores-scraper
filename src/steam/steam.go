@@ -13,6 +13,11 @@ import (
 )
 
 func GetInfo(title string) ([]common.GameInfo, error) {
+	// I don't know why, but sometimes this endpoint returns different results
+	// Or even throws "stream error: stream ID 1; INTERNAL_ERROR; received from peer"
+	// As far as I tested this problem is not deterministic whatsoever
+	// I guess the Steam server gets overloaded from time to time
+	// TODO: Find a workaround
 	resp, err := http.Get("https://api.steampowered.com/ISteamApps/GetAppList/v2/")
 	if err != nil {
 		return nil, err
@@ -58,9 +63,8 @@ func GetInfo(title string) ([]common.GameInfo, error) {
 		}
 	}
 
-	games := make([]common.GameInfo, 0, len(matches))
 	if len(matches) == 0 {
-		return games, nil
+		return make([]common.GameInfo, 0), nil
 	}
 
 	sort.Slice(matches, func(i, j int) bool {
@@ -76,6 +80,7 @@ func GetInfo(title string) ([]common.GameInfo, error) {
 		return nil, err
 	}
 
+	games := make([]common.GameInfo, 0, len(matches))
 	for i, price := range prices {
 		if price != "" {
 			games = append(games, common.GameInfo{Title: matches[i].Title, FormattedTitle: matches[i].FormattedTitle, Price: price})
