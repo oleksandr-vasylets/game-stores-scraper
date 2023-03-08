@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"regexp"
 	"sort"
 	"strings"
 	"web-scraper/common"
@@ -38,12 +37,12 @@ func GetInfo(title string) ([]common.GameInfo, error) {
 		return nil, err
 	}
 
-	regex := regexp.MustCompile("[^a-z0-9 ]+")
-	title = regex.ReplaceAllString(strings.ToLower(title), "")
+	title = common.Regex.ReplaceAllString(strings.ToLower(title), "")
 
 	type Match struct {
-		Title string
-		AppId string
+		Title          string
+		FormattedTitle string
+		AppId          string
 	}
 
 	matches := make([]Match, 0)
@@ -51,9 +50,9 @@ func GetInfo(title string) ([]common.GameInfo, error) {
 		if len(matches) == common.MaxCount {
 			break
 		}
-		formatted := regex.ReplaceAllString(strings.ToLower(elem.Name), "")
+		formatted := common.Regex.ReplaceAllString(strings.ToLower(elem.Name), "")
 		if strings.Contains(formatted, title) {
-			matches = append(matches, Match{Title: elem.Name, AppId: fmt.Sprint(elem.AppId)})
+			matches = append(matches, Match{Title: elem.Name, FormattedTitle: formatted, AppId: fmt.Sprint(elem.AppId)})
 		}
 	}
 
@@ -74,10 +73,10 @@ func GetInfo(title string) ([]common.GameInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	for i, price := range prices {
 		if price != "" {
-			games = append(games, common.GameInfo{Title: matches[i].Title, Price: price})
+			games = append(games, common.GameInfo{Title: matches[i].Title, FormattedTitle: matches[i].FormattedTitle, Price: price})
 		}
 	}
 

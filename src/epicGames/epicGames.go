@@ -2,7 +2,6 @@ package epicGames
 
 import (
 	"context"
-	"regexp"
 	"strings"
 
 	"web-scraper/common"
@@ -49,6 +48,8 @@ func GetInfo(title string) ([]common.GameInfo, error) {
 	req.Var("withPrice", true)
 	req.Var("withMapping", true)
 	req.Var("freeGame", false)
+	req.Var("sortBy", "title")
+	req.Var("sortDir", "asc")
 	req.Var("count", common.MaxCount)
 
 	type Response struct {
@@ -74,14 +75,13 @@ func GetInfo(title string) ([]common.GameInfo, error) {
 		return nil, err
 	}
 
-	regex := regexp.MustCompile("[^a-z0-9 ]+")
-	title = regex.ReplaceAllString(strings.ToLower(title), "")
+	title = common.Regex.ReplaceAllString(strings.ToLower(title), "")
 
 	games := make([]common.GameInfo, 0, len(response.Catalog.SearchStore.Elements))
 	for _, elem := range response.Catalog.SearchStore.Elements {
-		formatted := regex.ReplaceAllString(strings.ToLower(elem.Title), "")
+		formatted := common.Regex.ReplaceAllString(strings.ToLower(elem.Title), "")
 		if strings.Contains(formatted, title) {
-			games = append(games, common.GameInfo{Title: elem.Title, Price: elem.Price.TotalPrice.Formatted.DiscountPrice})
+			games = append(games, common.GameInfo{Title: elem.Title, FormattedTitle: formatted, Price: elem.Price.TotalPrice.Formatted.DiscountPrice})
 		}
 	}
 	return games, nil
