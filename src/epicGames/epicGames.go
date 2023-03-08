@@ -5,15 +5,12 @@ import (
 	"regexp"
 	"strings"
 
+	"web-scraper/common"
+
 	"github.com/machinebox/graphql"
 )
 
-type GameInfo struct {
-	Title string
-	Price string
-}
-
-func GetInfo(title string) ([]GameInfo, error) {
+func GetInfo(title string) ([]common.GameInfo, error) {
 	client := graphql.NewClient("https://graphql.epicgames.com/graphql")
 
 	query := `
@@ -46,13 +43,13 @@ func GetInfo(title string) ([]GameInfo, error) {
 
 	req := graphql.NewRequest(query)
 	req.Var("keywords", title)
-	req.Var("country", "US")
-	req.Var("allowCountries", "US")
-	req.Var("locale", "en-US")
+	req.Var("country", "UA")
+	req.Var("allowCountries", "UA")
+	req.Var("locale", "ua-UA")
 	req.Var("withPrice", true)
 	req.Var("withMapping", true)
 	req.Var("freeGame", false)
-	req.Var("count", 100)
+	req.Var("count", common.MaxCount)
 
 	type Response struct {
 		Catalog struct {
@@ -80,11 +77,11 @@ func GetInfo(title string) ([]GameInfo, error) {
 	regex := regexp.MustCompile("[^a-z0-9 ]+")
 	title = regex.ReplaceAllString(strings.ToLower(title), "")
 
-	games := make([]GameInfo, 0, len(response.Catalog.SearchStore.Elements))
+	games := make([]common.GameInfo, 0, len(response.Catalog.SearchStore.Elements))
 	for _, elem := range response.Catalog.SearchStore.Elements {
 		formatted := regex.ReplaceAllString(strings.ToLower(elem.Title), "")
 		if strings.Contains(formatted, title) {
-			games = append(games, GameInfo{elem.Title, elem.Price.TotalPrice.Formatted.DiscountPrice})
+			games = append(games, common.GameInfo{Title: elem.Title, Price: elem.Price.TotalPrice.Formatted.DiscountPrice})
 		}
 	}
 	return games, nil

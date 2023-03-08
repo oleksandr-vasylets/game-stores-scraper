@@ -1,117 +1,87 @@
 package steam
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
+	"regexp"
 	"sort"
 	"strings"
+	"web-scraper/common"
 )
 
-type appListResponse struct {
-	List struct {
-		Apps []struct {
-			AppId uint32 `json:"appid"`
-			Name  string `json:"name"`
-		} `json:"apps"`
-	} `json:"applist"`
-}
-
-func GetPrice(name string) (string, error) {
+func GetInfo(title string) ([]common.GameInfo, error) {
 	resp, err := http.Get("https://api.steampowered.com/ISteamApps/GetAppList/v2/")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	var appList appListResponse
+	type AppListResponse struct {
+		List struct {
+			Apps []struct {
+				AppId uint32 `json:"appid"`
+				Name  string `json:"name"`
+			} `json:"apps"`
+		} `json:"applist"`
+	}
+
+	var appList AppListResponse
 	err = json.Unmarshal(body, &appList)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	matches := make([]string, 0)
-	appIds := make([]string, 0)
+	regex := regexp.MustCompile("[^a-z0-9 ]+")
+	title = regex.ReplaceAllString(strings.ToLower(title), "")
+
+	type Match struct {
+		Title string
+		AppId string
+	}
+
+	matches := make([]Match, 0)
 	for _, elem := range appList.List.Apps {
-		if len(appIds) >= 100 {
+		if len(matches) == common.MaxCount {
 			break
 		}
-		if strings.Contains(strings.ToLower(elem.Name), strings.ToLower(name)) {
-			matches = append(matches, elem.Name)
-			appIds = append(appIds, fmt.Sprint(elem.AppId))
+		formatted := regex.ReplaceAllString(strings.ToLower(elem.Name), "")
+		if strings.Contains(formatted, title) {
+			matches = append(matches, Match{Title: elem.Name, AppId: fmt.Sprint(elem.AppId)})
 		}
 	}
 
-	if len(appIds) == 0 {
-		return "", fmt.Errorf("No matches found! Try more specific name.")
+	games := make([]common.GameInfo, 0, len(matches))
+	if len(matches) == 0 {
+		return games, nil
 	}
 
-	prices, err := fetchPrices(appIds)
-	if err != nil {
-		return "", err
-	}
-
-	type app struct {
-		name  string
-		price string
-	}
-
-	apps := make([]app, 0, len(matches))
-	for j, price := range prices {
-		if price != "" {
-			apps = append(apps, app{matches[j], price})
-		}
-	}
-
-	// Sort the matches by name.
-	sort.Slice(apps, func(i, j int) bool {
-		return apps[i].name < apps[j].name
+	sort.Slice(matches, func(i, j int) bool {
+		return matches[i].Title < matches[j].Title
 	})
 
-	// Display the closest matches to the user's input.
-	fmt.Println("Closest matches:")
-	for i, m := range apps {
-		fmt.Printf("%d. %s\n", i+1, m.name)
+	appIds := make([]string, 0, len(matches))
+	for _, m := range matches {
+		appIds = append(appIds, m.AppId)
 	}
-	fmt.Println("\nIf the game that you are looking for is not on the list,",
-		"then please try again and be more specific next time.")
-
-	// Ask the user to select a game from the closest matches.
-	for {
-		var selectedGame string
-		fmt.Print("Enter the name of a game from the list above: ")
-		scanner := bufio.NewScanner(os.Stdin)
-		scanner.Scan()
-		if scanner.Err() != nil {
-			fmt.Fprintln(os.Stderr, scanner.Err().Error())
-			return "", scanner.Err()
-		}
-		selectedGame = scanner.Text()
-
-		// Find the price for the selected game.
-		for _, app := range apps {
-			if app.name == selectedGame {
-				return app.price, nil
-			}
-		}
-		fmt.Println("No such game in the list! Please, try again.")
+	prices, err := fetchPrices(appIds)
+	if err != nil {
+		return nil, err
 	}
-}
+	
+	for i, price := range prices {
+		if price != "" {
+			games = append(games, common.GameInfo{Title: matches[i].Title, Price: price})
+		}
+	}
 
-type priceResponse struct {
-	Data struct {
-		PriceOverview struct {
-			Price string `json:"final_formatted"`
-		} `json:"price_overview"`
-	} `json:"data"`
+	return games, nil
 }
 
 func fetchPrices(appIds []string) ([]string, error) {
@@ -134,15 +104,23 @@ func fetchPrices(appIds []string) ([]string, error) {
 		return nil, err
 	}
 
+	type PriceResponse struct {
+		Data struct {
+			PriceOverview struct {
+				Price string `json:"final_formatted"`
+			} `json:"price_overview"`
+		} `json:"data"`
+	}
+
 	prices := make([]string, len(appIds))
 	for i, appId := range appIds {
-		var priceResp priceResponse
-		err = json.Unmarshal(obj[appId], &priceResp)
+		var priceResponse PriceResponse
+		err = json.Unmarshal(obj[appId], &priceResponse)
 		if err != nil {
 			prices[i] = ""
 			continue
 		}
-		prices[i] = priceResp.Data.PriceOverview.Price
+		prices[i] = priceResponse.Data.PriceOverview.Price
 	}
 
 	return prices, nil
