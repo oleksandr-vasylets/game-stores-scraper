@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"web-scraper/common"
 	"web-scraper/epicGames"
 	"web-scraper/gog"
 	"web-scraper/steam"
@@ -26,55 +27,38 @@ func main() {
 		return
 	}
 
-	epicGamesResult, err := epicGames.GetInfo(title)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		return
-	}
-	sort.Slice(epicGamesResult, func(x, y int) bool {
-		return epicGamesResult[x].FormattedTitle < epicGamesResult[y].FormattedTitle
-	})
-
-	steamResult, err := steam.GetInfo(title)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		return
-	}
-	sort.Slice(steamResult, func(x, y int) bool {
-		return steamResult[x].FormattedTitle < steamResult[y].FormattedTitle
-	})
-
-	gogResult, err := gog.GetInfo(title)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-	}
-	sort.Slice(gogResult, func(x, y int) bool {
-		return gogResult[x].FormattedTitle < gogResult[y].FormattedTitle
-	})
+	scrapers := []common.Scraper{epicGames.Scraper{}, steam.Scraper{}, gog.Scraper{}}
+	columnNames := make([]interface{}, 0, len(scrapers)+2)
+	columnNames = append(columnNames, "#")
+	columnNames = append(columnNames, "Title")
 
 	data := make(map[string][]string)
-
-	for _, game := range epicGamesResult {
-		if entry, ok := data[game.FormattedTitle]; ok {
-			entry[1] = game.Price
-		} else {
-			data[game.FormattedTitle] = []string{game.Title, game.Price, "--", "--"}
+	for i, scraper := range scrapers {
+		columnNames = append(columnNames, scraper.GetName())
+		result, err := scraper.GetInfo(title)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			return
 		}
-	}
+		sort.Slice(result, func(x, y int) bool {
+			return result[x].FormattedTitle < result[y].FormattedTitle
+		})
 
-	for _, game := range steamResult {
-		if entry, ok := data[game.FormattedTitle]; ok {
-			entry[2] = game.Price
-		} else {
-			data[game.FormattedTitle] = []string{game.Title, "--", game.Price, "--"}
-		}
-	}
-
-	for _, game := range gogResult {
-		if entry, ok := data[game.FormattedTitle]; ok {
-			entry[3] = game.Price
-		} else {
-			data[game.FormattedTitle] = []string{game.Title, "--", "--", game.Price}
+		for _, game := range result {
+			if entry, ok := data[game.FormattedTitle]; ok {
+				entry[i+1] = game.Price
+			} else {
+				entry := make([]string, len(scrapers)+1)
+				entry[0] = game.Title
+				for j := 1; j < len(entry); j++ {
+					if j == i+1 {
+						entry[j] = game.Price
+					} else {
+						entry[j] = "--"
+					}
+				}
+				data[game.FormattedTitle] = entry
+			}
 		}
 	}
 
@@ -93,10 +77,20 @@ func main() {
 		return keyValuePairs[i].Value[0] < keyValuePairs[j].Value[0]
 	})
 
-	tbl := table.New("#", "Title", "Epic Games Store", "Steam", "GOG")
+	if len(keyValuePairs) == 0 {
+		fmt.Println("Game(s) not found!")
+		return
+	}
+
+	tbl := table.New(columnNames...)
 
 	for i, entry := range keyValuePairs {
-		tbl.AddRow(i+1, entry.Value[0], entry.Value[1], entry.Value[2], entry.Value[3])
+		row := make([]interface{}, len(entry.Value)+1)
+		row[0] = i + 1
+		for i, column := range entry.Value {
+			row[i+1] = column
+		}
+		tbl.AddRow(row...)
 	}
 
 	tbl.Print()

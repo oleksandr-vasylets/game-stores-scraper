@@ -12,13 +12,22 @@ import (
 	"github.com/bojanz/currency"
 )
 
-func GetInfo(title string) ([]common.GameInfo, error) {
+type Scraper struct{}
+
+const appListEndpoint = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
+const priceQuery = "https://store.steampowered.com/api/appdetails?appids=%s&filters=price_overview"
+
+func (Scraper) GetName() string {
+	return "Steam"
+}
+
+func (scraper Scraper) GetInfo(title string) ([]common.GameInfo, error) {
 	// I don't know why, but sometimes this endpoint returns different results
 	// Or even throws "stream error: stream ID 1; INTERNAL_ERROR; received from peer"
 	// As far as I tested this problem is not deterministic whatsoever
 	// I guess the Steam server gets overloaded from time to time
 	// TODO: Find a workaround
-	resp, err := http.Get("https://api.steampowered.com/ISteamApps/GetAppList/v2/")
+	resp, err := http.Get(appListEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +53,7 @@ func GetInfo(title string) ([]common.GameInfo, error) {
 		return nil, err
 	}
 
-	title = common.Regex.ReplaceAllString(strings.ToLower(title), "")
+	title = common.AlphanumericRegex.ReplaceAllString(strings.ToLower(title), "")
 
 	type Match struct {
 		Title          string
@@ -57,7 +66,7 @@ func GetInfo(title string) ([]common.GameInfo, error) {
 		if len(matches) == common.MaxCount {
 			break
 		}
-		formatted := common.Regex.ReplaceAllString(strings.ToLower(elem.Name), "")
+		formatted := common.AlphanumericRegex.ReplaceAllString(strings.ToLower(elem.Name), "")
 		if strings.Contains(formatted, title) {
 			matches = append(matches, Match{Title: elem.Name, FormattedTitle: formatted, AppId: fmt.Sprint(elem.AppId)})
 		}
@@ -75,7 +84,7 @@ func GetInfo(title string) ([]common.GameInfo, error) {
 	for _, m := range matches {
 		appIds = append(appIds, m.AppId)
 	}
-	prices, err := fetchPrices(appIds)
+	prices, err := scraper.fetchPrices(appIds)
 	if err != nil {
 		return nil, err
 	}
@@ -90,9 +99,9 @@ func GetInfo(title string) ([]common.GameInfo, error) {
 	return games, nil
 }
 
-func fetchPrices(appIds []string) ([]string, error) {
+func (Scraper) fetchPrices(appIds []string) ([]string, error) {
 	param := strings.Join(appIds, ",")
-	url := fmt.Sprintf("https://store.steampowered.com/api/appdetails?appids=%s&filters=price_overview", param)
+	url := fmt.Sprintf(priceQuery, param)
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err

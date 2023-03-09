@@ -9,8 +9,16 @@ import (
 	"github.com/machinebox/graphql"
 )
 
-func GetInfo(title string) ([]common.GameInfo, error) {
-	client := graphql.NewClient("https://graphql.epicgames.com/graphql")
+type Scraper struct{}
+
+const graphqlEndpoint = "https://graphql.epicgames.com/graphql"
+
+func (Scraper) GetName() string {
+	return "Epic Games Store"
+}
+
+func (Scraper) GetInfo(title string) ([]common.GameInfo, error) {
+	client := graphql.NewClient(graphqlEndpoint)
 
 	query := `
 	  query searchStoreQuery($allowCountries: String, $count: Int, $country: String!, $keywords: String, $locale: String, $sortBy: String, $sortDir: String, $withPrice: Boolean = false, $freeGame: Boolean) {
@@ -75,11 +83,11 @@ func GetInfo(title string) ([]common.GameInfo, error) {
 		return nil, err
 	}
 
-	title = common.Regex.ReplaceAllString(strings.ToLower(title), "")
+	title = common.AlphanumericRegex.ReplaceAllString(strings.ToLower(title), "")
 
 	games := make([]common.GameInfo, 0, len(response.Catalog.SearchStore.Elements))
 	for _, elem := range response.Catalog.SearchStore.Elements {
-		formatted := common.Regex.ReplaceAllString(strings.ToLower(elem.Title), "")
+		formatted := common.AlphanumericRegex.ReplaceAllString(strings.ToLower(elem.Title), "")
 		if strings.Contains(formatted, title) {
 			games = append(games, common.GameInfo{Title: elem.Title, FormattedTitle: formatted, Price: elem.Price.TotalPrice.Formatted.DiscountPrice})
 		}
