@@ -42,6 +42,7 @@ func (scraper Scraper) GetInfo(ch chan common.Result, id int, title string) {
 			Price struct {
 				IsFree bool `json:"isFree"`
 			} `json:"price"`
+			Buyable bool `json:"buyable"`
 		} `json:"products"`
 	}
 
@@ -54,7 +55,7 @@ func (scraper Scraper) GetInfo(ch chan common.Result, id int, title string) {
 	games := make([]common.GameInfo, 0)
 	ids := make([]int64, 0, len(response.Products))
 	for _, game := range response.Products {
-		if !game.Price.IsFree {
+		if game.Buyable && !game.Price.IsFree{
 			ids = append(ids, game.Id)
 			formatted := common.AlphanumericRegex.ReplaceAllString(strings.ToLower(game.Title), "")
 			games = append(games, common.GameInfo{Title: game.Title, FormattedTitle: formatted})
