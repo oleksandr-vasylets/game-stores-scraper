@@ -22,9 +22,7 @@ func (Scraper) GetName() string {
 }
 
 func (scraper Scraper) GetInfo(title string) ([]common.GameInfo, error) {
-	// I don't know why, but sometimes this endpoint returns different results
-	// Or even throws "stream error: stream ID 1; INTERNAL_ERROR; received from peer"
-	// As far as I tested this problem is not deterministic whatsoever
+	// Sometimes accessing this endpoint throws "stream error: stream ID 1; INTERNAL_ERROR; received from peer"
 	// I guess the Steam server gets overloaded from time to time
 	// TODO: Find a workaround
 	resp, err := http.Get(appListEndpoint)
@@ -61,7 +59,7 @@ func (scraper Scraper) GetInfo(title string) ([]common.GameInfo, error) {
 		AppId          string
 	}
 
-	matches := make([]Match, 0)
+	matches := make([]Match, 0, common.MaxCount)
 	for _, elem := range response.List.Apps {
 		if len(matches) == common.MaxCount {
 			break

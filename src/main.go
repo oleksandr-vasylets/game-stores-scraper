@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	fmt.Print("Enter the title of the game: ")
+	fmt.Print("Enter the title of the game (more specific titles yield better results): ")
 	var title string
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
