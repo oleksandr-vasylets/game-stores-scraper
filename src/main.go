@@ -32,19 +32,29 @@ func main() {
 	columnNames = append(columnNames, "#")
 	columnNames = append(columnNames, "Title")
 
-	data := make(map[string][]string)
+	ch := make(chan common.Result, len(scrapers))
+
+	results := make([]common.Result, len(scrapers))
 	for i, scraper := range scrapers {
 		columnNames = append(columnNames, scraper.GetName())
-		result, err := scraper.GetInfo(title)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err.Error())
+		go scraper.GetInfo(ch, i, title)
+	}
+	for i := 0; i < len(scrapers); i++ {
+		result := <-ch
+		results[result.Id] = result
+	}
+
+	data := make(map[string][]string)
+	for i, result := range results {
+		if result.Error != nil {
+			fmt.Fprintln(os.Stderr, result.Error)
 			return
 		}
-		sort.Slice(result, func(x, y int) bool {
-			return result[x].FormattedTitle < result[y].FormattedTitle
+		sort.Slice(result.Info, func(x, y int) bool {
+			return result.Info[x].FormattedTitle < result.Info[y].FormattedTitle
 		})
 
-		for _, game := range result {
+		for _, game := range result.Info {
 			if entry, ok := data[game.FormattedTitle]; ok {
 				entry[i+1] = game.Price
 			} else {

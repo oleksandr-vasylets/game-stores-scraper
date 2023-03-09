@@ -17,7 +17,7 @@ func (Scraper) GetName() string {
 	return "Epic Games Store"
 }
 
-func (Scraper) GetInfo(title string) ([]common.GameInfo, error) {
+func (Scraper) GetInfo(ch chan common.Result, id int, title string) {
 	client := graphql.NewClient(graphqlEndpoint)
 
 	query := `
@@ -80,7 +80,7 @@ func (Scraper) GetInfo(title string) ([]common.GameInfo, error) {
 	var response Response
 	err := client.Run(context.Background(), req, &response)
 	if err != nil {
-		return nil, err
+		ch <- common.Result{Id: id, Info: nil, Error: err}
 	}
 
 	title = common.AlphanumericRegex.ReplaceAllString(strings.ToLower(title), "")
@@ -92,5 +92,5 @@ func (Scraper) GetInfo(title string) ([]common.GameInfo, error) {
 			games = append(games, common.GameInfo{Title: elem.Title, FormattedTitle: formatted, Price: elem.Price.TotalPrice.Formatted.DiscountPrice})
 		}
 	}
-	return games, nil
+	ch <- common.Result{Id: id, Info: games, Error: nil}
 }

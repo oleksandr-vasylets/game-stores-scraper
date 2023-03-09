@@ -15,7 +15,13 @@ type GameInfo struct {
 	Price          string
 }
 
+type Result struct {
+	Id    int
+	Info  []GameInfo
+	Error error
+}
+
 type Scraper interface {
 	GetName() string
-	GetInfo(title string) ([]GameInfo, error)
+	GetInfo(ch chan Result, id int, title string)
 }

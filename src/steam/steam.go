@@ -21,19 +21,19 @@ func (Scraper) GetName() string {
 	return "Steam"
 }
 
-func (scraper Scraper) GetInfo(title string) ([]common.GameInfo, error) {
+func (scraper Scraper) GetInfo(ch chan common.Result, id int, title string) {
 	// Sometimes accessing this endpoint throws "stream error: stream ID 1; INTERNAL_ERROR; received from peer"
 	// I guess the Steam server gets overloaded from time to time
 	// TODO: Find a workaround
 	resp, err := http.Get(appListEndpoint)
 	if err != nil {
-		return nil, err
+		ch <- common.Result{Id: id, Info: nil, Error: err}
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		ch <- common.Result{Id: id, Info: nil, Error: err}
 	}
 
 	type Response struct {
@@ -48,7 +48,7 @@ func (scraper Scraper) GetInfo(title string) ([]common.GameInfo, error) {
 	var response Response
 	err = json.Unmarshal(body, &response)
 	if err != nil {
-		return nil, err
+		ch <- common.Result{Id: id, Info: nil, Error: err}
 	}
 
 	title = common.AlphanumericRegex.ReplaceAllString(strings.ToLower(title), "")
@@ -71,7 +71,7 @@ func (scraper Scraper) GetInfo(title string) ([]common.GameInfo, error) {
 	}
 
 	if len(matches) == 0 {
-		return make([]common.GameInfo, 0), nil
+		ch <- common.Result{Id: id, Info: make([]common.GameInfo, 0), Error: nil}
 	}
 
 	sort.Slice(matches, func(i, j int) bool {
@@ -84,7 +84,7 @@ func (scraper Scraper) GetInfo(title string) ([]common.GameInfo, error) {
 	}
 	prices, err := scraper.fetchPrices(appIds)
 	if err != nil {
-		return nil, err
+		ch <- common.Result{Id: id, Info: nil, Error: err}
 	}
 
 	games := make([]common.GameInfo, 0, len(matches))
@@ -94,7 +94,7 @@ func (scraper Scraper) GetInfo(title string) ([]common.GameInfo, error) {
 		}
 	}
 
-	return games, nil
+	ch <- common.Result{Id: id, Info: games, Error: err}
 }
 
 func (Scraper) fetchPrices(appIds []string) ([]string, error) {

@@ -22,17 +22,17 @@ func (Scraper) GetName() string {
 	return "GoG"
 }
 
-func (scraper Scraper) GetInfo(title string) ([]common.GameInfo, error) {
+func (scraper Scraper) GetInfo(ch chan common.Result, id int, title string) {
 	url := fmt.Sprintf(gameListQuery, common.MaxCount, url.QueryEscape(title))
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, err
+		ch <- common.Result{Id: id, Info: nil, Error: err}
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		ch <- common.Result{Id: id, Info: nil, Error: err}
 	}
 
 	type Response struct {
@@ -48,7 +48,7 @@ func (scraper Scraper) GetInfo(title string) ([]common.GameInfo, error) {
 	var response Response
 	err = json.Unmarshal(body, &response)
 	if err != nil {
-		return nil, err
+		ch <- common.Result{Id: id, Info: nil, Error: err}
 	}
 
 	games := make([]common.GameInfo, 0)
@@ -62,19 +62,19 @@ func (scraper Scraper) GetInfo(title string) ([]common.GameInfo, error) {
 	}
 
 	if len(games) == 0 {
-		return make([]common.GameInfo, 0), nil
+		ch <- common.Result{Id: id, Info: make([]common.GameInfo, 0), Error: err}
 	}
 
 	prices, err := scraper.fetchPrices(ids)
 	if err != nil {
-		return nil, err
+		ch <- common.Result{Id: id, Info: nil, Error: err}
 	}
 
 	for i, price := range prices {
 		games[i].Price = price
 	}
 
-	return games, nil
+	ch <- common.Result{Id: id, Info: games, Error: err}
 }
 
 func (Scraper) fetchPrices(ids []int64) ([]string, error) {
@@ -107,6 +107,10 @@ func (Scraper) fetchPrices(ids []int64) ([]string, error) {
 		err = json.Unmarshal(body, &priceResponse)
 		if err != nil {
 			return nil, err
+		}
+
+		if len(priceResponse.Data.Prices) == 0 {
+			fmt.Println(id)
 		}
 
 		tokens := strings.Split(priceResponse.Data.Prices[0].Price, " ")
