@@ -104,4 +104,6 @@ func main() {
 	}
 
 	tbl.Print()
+
+	fmt.Scanln()
 }

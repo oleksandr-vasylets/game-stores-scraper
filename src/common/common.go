@@ -1,11 +1,53 @@
 package common
 
-import "regexp"
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"regexp"
+)
 
-const MaxCount int = 100
+func MaxCount() int {
+	return settings.MaxCount
+}
 
-const CountryCode string = "ua" // TODO: Replace these with actual user country code and locale
-const Locale string = "uk"
+func CountryCode() string {
+	return settings.CountryCode
+}
+
+func Locale() string {
+	return settings.Locale
+}
+
+type profileSettings struct {
+	MaxCount    int    `json:"MaxCount"`
+	CountryCode string `json:"CountryCode"`
+	Locale      string `json:"Locale"`
+}
+
+var settings profileSettings
+
+const profileSettingsFilename = "settings.json"
+
+func init() {
+	settings = profileSettings{MaxCount: 100, CountryCode: "us", Locale: "en-US"}
+	if _, err := os.Stat(profileSettingsFilename); os.IsNotExist(err) {
+		return
+	}
+	file, err := os.Open(profileSettingsFilename)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	defer file.Close()
+
+	decoder := json.NewDecoder(file)
+	err = decoder.Decode(&settings)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+}
 
 var AlphanumericRegex *regexp.Regexp = regexp.MustCompile("[^\\p{L}\\p{N}]+")
 

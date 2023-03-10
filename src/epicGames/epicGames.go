@@ -50,15 +50,15 @@ func (Scraper) GetInfo(ch chan common.Result, id int, title string) {
 
 	req := graphql.NewRequest(query)
 	req.Var("keywords", title)
-	req.Var("country", strings.ToUpper(common.CountryCode))
-	req.Var("allowCountries", strings.ToUpper(common.CountryCode))
-	req.Var("locale", common.Locale)
+	req.Var("country", strings.ToUpper(common.CountryCode()))
+	req.Var("allowCountries", strings.ToUpper(common.CountryCode()))
+	req.Var("locale", common.Locale())
 	req.Var("withPrice", true)
 	req.Var("withMapping", true)
 	req.Var("freeGame", false)
 	req.Var("sortBy", "title")
 	req.Var("sortDir", "asc")
-	req.Var("count", common.MaxCount)
+	req.Var("count", common.MaxCount())
 
 	type Response struct {
 		Catalog struct {

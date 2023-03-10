@@ -15,7 +15,7 @@ import (
 type Scraper struct{}
 
 const appListEndpoint = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
-const priceQuery = "https://store.steampowered.com/api/appdetails?appids=%s&filters=price_overview"
+const priceQuery = "https://store.steampowered.com/api/appdetails?appids=%s&filters=price_overview&cc=%s"
 
 func (Scraper) GetName() string {
 	return "Steam"
@@ -59,9 +59,9 @@ func (scraper Scraper) GetInfo(ch chan common.Result, id int, title string) {
 		AppId          string
 	}
 
-	matches := make([]Match, 0, common.MaxCount)
+	matches := make([]Match, 0, common.MaxCount())
 	for _, elem := range response.List.Apps {
-		if len(matches) == common.MaxCount {
+		if len(matches) == common.MaxCount() {
 			break
 		}
 		formatted := common.AlphanumericRegex.ReplaceAllString(strings.ToLower(elem.Name), "")
@@ -98,8 +98,8 @@ func (scraper Scraper) GetInfo(ch chan common.Result, id int, title string) {
 }
 
 func (Scraper) fetchPrices(appIds []string) ([]string, error) {
-	param := strings.Join(appIds, ",")
-	url := fmt.Sprintf(priceQuery, param)
+	ids := strings.Join(appIds, ",")
+	url := fmt.Sprintf(priceQuery, ids, common.CountryCode())
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func (Scraper) fetchPrices(appIds []string) ([]string, error) {
 		} `json:"data"`
 	}
 
-	locale := currency.NewLocale(common.Locale)
+	locale := currency.NewLocale(common.Locale())
 	formatter := currency.NewFormatter(locale)
 
 	prices := make([]string, len(appIds))
