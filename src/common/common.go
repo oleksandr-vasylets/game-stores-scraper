@@ -32,6 +32,25 @@ const profileSettingsFilename = "settings.json"
 func init() {
 	settings = profileSettings{MaxCount: 100, CountryCode: "us", Locale: "en-US"}
 	if _, err := os.Stat(profileSettingsFilename); os.IsNotExist(err) {
+		fmt.Println("settings.json not found, loading fallback values")
+		file, err := os.Create(profileSettingsFilename)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return
+		}
+		defer file.Close()
+
+		data, err := json.MarshalIndent(settings, "", "    ")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return
+		}
+
+		_, err = file.Write(data)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return
+		}
 		return
 	}
 	file, err := os.Open(profileSettingsFilename)

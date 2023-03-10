@@ -14,16 +14,20 @@ import (
 )
 
 func main() {
+	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Enter the title of the game (more specific titles yield better results): ")
 	var title string
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
 	if scanner.Err() != nil {
 		fmt.Fprintln(os.Stderr, scanner.Err())
+		reader.ReadRune()
 		return
 	}
 	title = scanner.Text()
 	if title == "" {
+		fmt.Println("Empty input")
+		reader.ReadRune()
 		return
 	}
 
@@ -48,6 +52,7 @@ func main() {
 	for i, result := range results {
 		if result.Error != nil {
 			fmt.Fprintln(os.Stderr, result.Error)
+			reader.ReadRune()
 			return
 		}
 		sort.Slice(result.Info, func(x, y int) bool {
@@ -89,6 +94,7 @@ func main() {
 
 	if len(keyValuePairs) == 0 {
 		fmt.Println("Game(s) not found!")
+		reader.ReadRune()
 		return
 	}
 
@@ -105,5 +111,5 @@ func main() {
 
 	tbl.Print()
 
-	fmt.Scanln()
+	reader.ReadRune()
 }
