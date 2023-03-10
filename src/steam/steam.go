@@ -28,12 +28,14 @@ func (scraper Scraper) GetInfo(ch chan common.Result, id int, title string) {
 	resp, err := http.Get(appListEndpoint)
 	if err != nil {
 		ch <- common.Result{Id: id, Info: nil, Error: err}
+		return
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		ch <- common.Result{Id: id, Info: nil, Error: err}
+		return
 	}
 
 	type Response struct {
@@ -49,6 +51,7 @@ func (scraper Scraper) GetInfo(ch chan common.Result, id int, title string) {
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		ch <- common.Result{Id: id, Info: nil, Error: err}
+		return
 	}
 
 	title = common.AlphanumericRegex.ReplaceAllString(strings.ToLower(title), "")
@@ -72,6 +75,7 @@ func (scraper Scraper) GetInfo(ch chan common.Result, id int, title string) {
 
 	if len(matches) == 0 {
 		ch <- common.Result{Id: id, Info: make([]common.GameInfo, 0), Error: nil}
+		return
 	}
 
 	sort.Slice(matches, func(i, j int) bool {
@@ -85,6 +89,7 @@ func (scraper Scraper) GetInfo(ch chan common.Result, id int, title string) {
 	prices, err := scraper.fetchPrices(appIds)
 	if err != nil {
 		ch <- common.Result{Id: id, Info: nil, Error: err}
+		return
 	}
 
 	games := make([]common.GameInfo, 0, len(matches))

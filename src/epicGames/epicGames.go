@@ -81,6 +81,7 @@ func (Scraper) GetInfo(ch chan common.Result, id int, title string) {
 	err := client.Run(context.Background(), req, &response)
 	if err != nil {
 		ch <- common.Result{Id: id, Info: nil, Error: err}
+		return
 	}
 
 	title = common.AlphanumericRegex.ReplaceAllString(strings.ToLower(title), "")
