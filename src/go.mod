@@ -3,9 +3,11 @@ module web-scraper
 go 1.20
 
 require (
+	github.com/biter777/countries v1.6.4
 	github.com/bojanz/currency v1.1.1
 	github.com/machinebox/graphql v0.2.2
 	github.com/rodaine/table v1.1.0
+	golang.org/x/text v0.8.0
 )
 
 require (

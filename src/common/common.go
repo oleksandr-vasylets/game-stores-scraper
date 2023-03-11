@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+
+	"github.com/biter777/countries"
+	"golang.org/x/text/language"
 )
 
 func MaxCount() int {
-	return settings.MaxCount
+	return 100
 }
 
 func CountryCode() string {
@@ -20,17 +23,18 @@ func Locale() string {
 }
 
 type profileSettings struct {
-	MaxCount    int    `json:"MaxCount"`
-	CountryCode string `json:"CountryCode"`
-	Locale      string `json:"Locale"`
+	CountryCode string
+	Locale      string
 }
 
 var settings profileSettings
 
 const profileSettingsFilename = "settings.json"
+const defaultCountryCode = "ua"
+const defaultLocale = "uk"
 
 func init() {
-	settings = profileSettings{MaxCount: 100, CountryCode: "us", Locale: "en-US"}
+	settings = profileSettings{CountryCode: defaultCountryCode, Locale: defaultLocale}
 	if _, err := os.Stat(profileSettingsFilename); os.IsNotExist(err) {
 		fmt.Println("settings.json not found, loading fallback values")
 		file, err := os.Create(profileSettingsFilename)
@@ -65,6 +69,18 @@ func init() {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return
+	}
+
+	cc := countries.ByName(settings.CountryCode)
+	if len(settings.CountryCode) != 2 || !cc.IsValid() {
+		fmt.Printf("Invalid country code, fallback to \"%s\"\n", defaultCountryCode)
+		settings.CountryCode = defaultCountryCode
+	}
+
+	_, err = language.Parse(settings.Locale)
+	if err != nil {
+		fmt.Printf("Invalid locale, fallback to \"%s\"\n", defaultLocale)
+		settings.Locale = defaultLocale
 	}
 }
 
