@@ -1,39 +1,37 @@
-package gog
+package scrapers
 
 import (
 	"encoding/json"
 	"fmt"
+	"game-stores-scraper/settings"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
-	"web-scraper/common"
 
 	"github.com/bojanz/currency"
 )
 
-type Scraper struct{}
+type GogScraper struct{}
 
-const gameListQuery = "https://www.gog.com/games/ajax/filtered?mediaType=game&limit%d&search=%s"
-const priceQuery = "https://api.gog.com/products/%d/prices?countryCode=%s"
-
-func (Scraper) GetName() string {
+func (GogScraper) GetName() string {
 	return "GoG"
 }
 
-func (scraper Scraper) GetInfo(ch chan common.Result, id int, title string) {
-	url := fmt.Sprintf(gameListQuery, common.MaxCount(), url.QueryEscape(title))
+func (scraper GogScraper) GetInfo(ch chan Result, id int, title string) {
+	const gameListQuery = "https://www.gog.com/games/ajax/filtered?mediaType=game&limit%d&search=%s"
+	url := fmt.Sprintf(gameListQuery, settings.MaxCount(), url.QueryEscape(title))
 	resp, err := http.Get(url)
 	if err != nil {
-		ch <- common.Result{Id: id, Info: nil, Error: err}
+		ch <- Result{Id: id, Info: nil, Error: err}
 		return
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		ch <- common.Result{Id: id, Info: nil, Error: err}
+		ch <- Result{Id: id, Info: nil, Error: err}
 		return
 	}
 
@@ -51,28 +49,28 @@ func (scraper Scraper) GetInfo(ch chan common.Result, id int, title string) {
 	var response Response
 	err = json.Unmarshal(body, &response)
 	if err != nil {
-		ch <- common.Result{Id: id, Info: nil, Error: err}
+		ch <- Result{Id: id, Info: nil, Error: err}
 		return
 	}
 
-	games := make([]common.GameInfo, 0)
+	games := make([]GameInfo, 0)
 	ids := make([]int64, 0, len(response.Products))
 	for _, game := range response.Products {
 		if game.Buyable && !game.Price.IsFree {
 			ids = append(ids, game.Id)
-			formatted := common.AlphanumericRegex.ReplaceAllString(strings.ToLower(game.Title), "")
-			games = append(games, common.GameInfo{Title: game.Title, FormattedTitle: formatted})
+			formatted := alphanumericRegex.ReplaceAllString(strings.ToLower(game.Title), "")
+			games = append(games, GameInfo{Title: game.Title, FormattedTitle: formatted})
 		}
 	}
 
 	if len(games) == 0 {
-		ch <- common.Result{Id: id, Info: make([]common.GameInfo, 0), Error: err}
+		ch <- Result{Id: id, Info: make([]GameInfo, 0), Error: err}
 		return
 	}
 
 	prices, err := scraper.fetchPrices(ids)
 	if err != nil {
-		ch <- common.Result{Id: id, Info: nil, Error: err}
+		ch <- Result{Id: id, Info: nil, Error: err}
 		return
 	}
 
@@ -80,17 +78,18 @@ func (scraper Scraper) GetInfo(ch chan common.Result, id int, title string) {
 		games[i].Price = price
 	}
 
-	ch <- common.Result{Id: id, Info: games, Error: err}
+	ch <- Result{Id: id, Info: games, Error: err}
 	return
 }
 
-func (Scraper) fetchPrices(ids []int64) ([]string, error) {
-	locale := currency.NewLocale(common.Locale())
+func (GogScraper) fetchPrices(ids []int64) ([]string, error) {
+	locale := currency.NewLocale(settings.Locale())
 	formatter := currency.NewFormatter(locale)
+	const priceQuery = "https://api.gog.com/products/%d/prices?countryCode=%s"
 
 	prices := make([]string, 0, len(ids))
 	for _, id := range ids {
-		url := fmt.Sprintf(priceQuery, id, common.CountryCode())
+		url := fmt.Sprintf(priceQuery, id, settings.CountryCode())
 		resp, err := http.Get(url)
 		if err != nil {
 			return nil, err

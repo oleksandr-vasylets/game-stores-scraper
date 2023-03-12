@@ -1,40 +1,38 @@
-package steam
+package scrapers
 
 import (
 	"encoding/json"
 	"fmt"
+	"game-stores-scraper/settings"
 	"io/ioutil"
 	"net/http"
 	"sort"
 	"strings"
-	"web-scraper/common"
 
 	"github.com/bojanz/currency"
 )
 
-type Scraper struct{}
+type SteamScraper struct{}
 
-const appListEndpoint = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
-const priceQuery = "https://store.steampowered.com/api/appdetails?appids=%s&filters=price_overview&cc=%s"
-
-func (Scraper) GetName() string {
+func (SteamScraper) GetName() string {
 	return "Steam"
 }
 
-func (scraper Scraper) GetInfo(ch chan common.Result, id int, title string) {
+func (scraper SteamScraper) GetInfo(ch chan Result, id int, title string) {
 	// Sometimes accessing this endpoint throws "stream error: stream ID 1; INTERNAL_ERROR; received from peer"
 	// I guess the Steam server gets overloaded from time to time
 	// TODO: Find a workaround
+	const appListEndpoint = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
 	resp, err := http.Get(appListEndpoint)
 	if err != nil {
-		ch <- common.Result{Id: id, Info: nil, Error: err}
+		ch <- Result{Id: id, Info: nil, Error: err}
 		return
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		ch <- common.Result{Id: id, Info: nil, Error: err}
+		ch <- Result{Id: id, Info: nil, Error: err}
 		return
 	}
 
@@ -50,11 +48,11 @@ func (scraper Scraper) GetInfo(ch chan common.Result, id int, title string) {
 	var response Response
 	err = json.Unmarshal(body, &response)
 	if err != nil {
-		ch <- common.Result{Id: id, Info: nil, Error: err}
+		ch <- Result{Id: id, Info: nil, Error: err}
 		return
 	}
 
-	title = common.AlphanumericRegex.ReplaceAllString(strings.ToLower(title), "")
+	title = alphanumericRegex.ReplaceAllString(strings.ToLower(title), "")
 
 	type Match struct {
 		Title          string
@@ -62,19 +60,19 @@ func (scraper Scraper) GetInfo(ch chan common.Result, id int, title string) {
 		AppId          string
 	}
 
-	matches := make([]Match, 0, common.MaxCount())
+	matches := make([]Match, 0, settings.MaxCount())
 	for _, elem := range response.List.Apps {
-		if len(matches) == common.MaxCount() {
+		if len(matches) == settings.MaxCount() {
 			break
 		}
-		formatted := common.AlphanumericRegex.ReplaceAllString(strings.ToLower(elem.Name), "")
+		formatted := alphanumericRegex.ReplaceAllString(strings.ToLower(elem.Name), "")
 		if strings.Contains(formatted, title) {
 			matches = append(matches, Match{Title: elem.Name, FormattedTitle: formatted, AppId: fmt.Sprint(elem.AppId)})
 		}
 	}
 
 	if len(matches) == 0 {
-		ch <- common.Result{Id: id, Info: make([]common.GameInfo, 0), Error: nil}
+		ch <- Result{Id: id, Info: make([]GameInfo, 0), Error: nil}
 		return
 	}
 
@@ -88,23 +86,24 @@ func (scraper Scraper) GetInfo(ch chan common.Result, id int, title string) {
 	}
 	prices, err := scraper.fetchPrices(appIds)
 	if err != nil {
-		ch <- common.Result{Id: id, Info: nil, Error: err}
+		ch <- Result{Id: id, Info: nil, Error: err}
 		return
 	}
 
-	games := make([]common.GameInfo, 0, len(matches))
+	games := make([]GameInfo, 0, len(matches))
 	for i, price := range prices {
 		if price != "" {
-			games = append(games, common.GameInfo{Title: matches[i].Title, FormattedTitle: matches[i].FormattedTitle, Price: price})
+			games = append(games, GameInfo{Title: matches[i].Title, FormattedTitle: matches[i].FormattedTitle, Price: price})
 		}
 	}
 
-	ch <- common.Result{Id: id, Info: games, Error: err}
+	ch <- Result{Id: id, Info: games, Error: err}
 }
 
-func (Scraper) fetchPrices(appIds []string) ([]string, error) {
+func (SteamScraper) fetchPrices(appIds []string) ([]string, error) {
 	ids := strings.Join(appIds, ",")
-	url := fmt.Sprintf(priceQuery, ids, common.CountryCode())
+	const priceQuery = "https://store.steampowered.com/api/appdetails?appids=%s&filters=price_overview&cc=%s"
+	url := fmt.Sprintf(priceQuery, ids, settings.CountryCode())
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -131,7 +130,7 @@ func (Scraper) fetchPrices(appIds []string) ([]string, error) {
 		} `json:"data"`
 	}
 
-	locale := currency.NewLocale(common.Locale())
+	locale := currency.NewLocale(settings.Locale())
 	formatter := currency.NewFormatter(locale)
 
 	prices := make([]string, len(appIds))

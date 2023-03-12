@@ -14,7 +14,8 @@
 # Visual Studio Code
 .vscode
 
-# Output
+# Local scripts and output binaries
+scripts
 bin
 
 # Dependency directories (remove the comment below to include it)

@@ -1,10 +1,9 @@
-package common
+package settings
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"regexp"
 
 	"github.com/biter777/countries"
 	"golang.org/x/text/language"
@@ -82,23 +81,4 @@ func init() {
 		fmt.Printf("Invalid locale, fallback to \"%s\"\n", defaultLocale)
 		settings.Locale = defaultLocale
 	}
-}
-
-var AlphanumericRegex *regexp.Regexp = regexp.MustCompile("[^\\p{L}\\p{N}]+")
-
-type GameInfo struct {
-	Title          string
-	FormattedTitle string
-	Price          string
-}
-
-type Result struct {
-	Id    int
-	Info  []GameInfo
-	Error error
-}
-
-type Scraper interface {
-	GetName() string
-	GetInfo(ch chan Result, id int, title string)
 }

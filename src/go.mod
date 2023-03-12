@@ -1,4 +1,4 @@
-module web-scraper
+module game-stores-scraper
 
 go 1.20
 

@@ -3,12 +3,9 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"game-stores-scraper/scrapers"
 	"os"
 	"sort"
-	"web-scraper/common"
-	"web-scraper/epicGames"
-	"web-scraper/gog"
-	"web-scraper/steam"
 
 	"github.com/rodaine/table"
 )
@@ -31,19 +28,19 @@ func main() {
 		return
 	}
 
-	scrapers := []common.Scraper{epicGames.Scraper{}, steam.Scraper{}, gog.Scraper{}}
-	columnNames := make([]interface{}, 0, len(scrapers)+2)
+	scraperList := []scrapers.Scraper{scrapers.EpicGamesScraper{}, scrapers.SteamScraper{}, scrapers.GogScraper{}}
+	columnNames := make([]interface{}, 0, len(scraperList)+2)
 	columnNames = append(columnNames, "#")
 	columnNames = append(columnNames, "Title")
 
-	ch := make(chan common.Result, len(scrapers))
+	ch := make(chan scrapers.Result, len(scraperList))
 
-	results := make([]common.Result, len(scrapers))
-	for i, scraper := range scrapers {
+	results := make([]scrapers.Result, len(scraperList))
+	for i, scraper := range scraperList {
 		columnNames = append(columnNames, scraper.GetName())
 		go scraper.GetInfo(ch, i, title)
 	}
-	for i := 0; i < len(scrapers); i++ {
+	for i := 0; i < len(scraperList); i++ {
 		result := <-ch
 		results[result.Id] = result
 	}
@@ -63,7 +60,7 @@ func main() {
 			if entry, ok := data[game.FormattedTitle]; ok {
 				entry[i+1] = game.Price
 			} else {
-				entry := make([]string, len(scrapers)+1)
+				entry := make([]string, len(scraperList)+1)
 				entry[0] = game.Title
 				for j := 1; j < len(entry); j++ {
 					if j == i+1 {

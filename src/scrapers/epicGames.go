@@ -1,23 +1,21 @@
-package epicGames
+package scrapers
 
 import (
 	"context"
+	"game-stores-scraper/settings"
 	"strings"
-
-	"web-scraper/common"
 
 	"github.com/machinebox/graphql"
 )
 
-type Scraper struct{}
+type EpicGamesScraper struct{}
 
-const graphqlEndpoint = "https://graphql.epicgames.com/graphql"
-
-func (Scraper) GetName() string {
+func (EpicGamesScraper) GetName() string {
 	return "Epic Games Store"
 }
 
-func (Scraper) GetInfo(ch chan common.Result, id int, title string) {
+func (EpicGamesScraper) GetInfo(ch chan Result, id int, title string) {
+	const graphqlEndpoint = "https://graphql.epicgames.com/graphql"
 	client := graphql.NewClient(graphqlEndpoint)
 
 	query := `
@@ -50,15 +48,15 @@ func (Scraper) GetInfo(ch chan common.Result, id int, title string) {
 
 	req := graphql.NewRequest(query)
 	req.Var("keywords", title)
-	req.Var("country", strings.ToUpper(common.CountryCode()))
-	req.Var("allowCountries", strings.ToUpper(common.CountryCode()))
-	req.Var("locale", common.Locale())
+	req.Var("country", strings.ToUpper(settings.CountryCode()))
+	req.Var("allowCountries", strings.ToUpper(settings.CountryCode()))
+	req.Var("locale", settings.Locale())
 	req.Var("withPrice", true)
 	req.Var("withMapping", true)
 	req.Var("freeGame", false)
 	req.Var("sortBy", "title")
 	req.Var("sortDir", "asc")
-	req.Var("count", common.MaxCount())
+	req.Var("count", settings.MaxCount())
 
 	type Response struct {
 		Catalog struct {
@@ -80,18 +78,18 @@ func (Scraper) GetInfo(ch chan common.Result, id int, title string) {
 	var response Response
 	err := client.Run(context.Background(), req, &response)
 	if err != nil {
-		ch <- common.Result{Id: id, Info: nil, Error: err}
+		ch <- Result{Id: id, Info: nil, Error: err}
 		return
 	}
 
-	title = common.AlphanumericRegex.ReplaceAllString(strings.ToLower(title), "")
+	title = alphanumericRegex.ReplaceAllString(strings.ToLower(title), "")
 
-	games := make([]common.GameInfo, 0, len(response.Catalog.SearchStore.Elements))
+	games := make([]GameInfo, 0, len(response.Catalog.SearchStore.Elements))
 	for _, elem := range response.Catalog.SearchStore.Elements {
-		formatted := common.AlphanumericRegex.ReplaceAllString(strings.ToLower(elem.Title), "")
+		formatted := alphanumericRegex.ReplaceAllString(strings.ToLower(elem.Title), "")
 		if strings.Contains(formatted, title) {
-			games = append(games, common.GameInfo{Title: elem.Title, FormattedTitle: formatted, Price: elem.Price.TotalPrice.Formatted.DiscountPrice})
+			games = append(games, GameInfo{Title: elem.Title, FormattedTitle: formatted, Price: elem.Price.TotalPrice.Formatted.DiscountPrice})
 		}
 	}
-	ch <- common.Result{Id: id, Info: games, Error: nil}
+	ch <- Result{Id: id, Info: games, Error: nil}
 }
