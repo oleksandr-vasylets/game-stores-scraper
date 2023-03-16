@@ -60,9 +60,9 @@ func (scraper SteamScraper) GetInfo(ch chan Result, id int, title string) {
 		AppId          string
 	}
 
-	matches := make([]Match, 0, settings.MaxCount())
+	matches := make([]Match, 0, settings.MaxCount)
 	for _, elem := range response.List.Apps {
-		if len(matches) == settings.MaxCount() {
+		if len(matches) == settings.MaxCount {
 			break
 		}
 		formatted := alphanumericRegex.ReplaceAllString(strings.ToLower(elem.Name), "")
@@ -103,7 +103,7 @@ func (scraper SteamScraper) GetInfo(ch chan Result, id int, title string) {
 func (SteamScraper) fetchPrices(appIds []string) ([]string, error) {
 	ids := strings.Join(appIds, ",")
 	const priceQuery = "https://store.steampowered.com/api/appdetails?appids=%s&filters=price_overview&cc=%s"
-	url := fmt.Sprintf(priceQuery, ids, settings.CountryCode())
+	url := fmt.Sprintf(priceQuery, ids, settings.UserProfile.CountryCode)
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -130,7 +130,7 @@ func (SteamScraper) fetchPrices(appIds []string) ([]string, error) {
 		} `json:"data"`
 	}
 
-	locale := currency.NewLocale(settings.Locale())
+	locale := currency.NewLocale(settings.UserProfile.Locale)
 	formatter := currency.NewFormatter(locale)
 
 	prices := make([]string, len(appIds))

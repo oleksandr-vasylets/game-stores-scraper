@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"game-stores-scraper/scrapers"
+	"game-stores-scraper/settings"
 	"os"
 	"sort"
 	"strings"
@@ -94,7 +95,12 @@ func find(title string) {
 func main() {
 	for {
 		scanner := bufio.NewScanner(os.Stdin)
-		fmt.Println("Supported commands:\n1. find [title]\n2. exit\nEnter a command: ")
+		fmt.Println("\nSupported commands:\n" +
+			"1. find [title]\n" +
+			"2. get [--country | --locale]\n" +
+			"3. set [--country | --locale] [value]\n" +
+			"4. exit\n\n" +
+			"Enter a command: ")
 		if !scanner.Scan() {
 			fmt.Fprintf(os.Stderr, scanner.Err().Error())
 			return
@@ -105,14 +111,41 @@ func main() {
 				return
 			}
 			fmt.Println("Wrong command! Try again")
-			fmt.Println()
 			continue
 		}
 		if strings.ToLower(tokens[0]) == "find" {
 			title := strings.Join(tokens[1:], " ")
 			find(title)
-			fmt.Println()
 			continue
+		}
+		if strings.ToLower(tokens[0]) == "get" {
+			property := strings.ToLower(tokens[1])
+			if property == "--country" {
+				fmt.Println("Country:", settings.UserProfile.CountryCode)
+			} else if property == "--locale" {
+				fmt.Println("Locale:", settings.UserProfile.Locale)
+			} else {
+				fmt.Println("Wrong command! Try again")
+				continue
+			}
+		}
+		if strings.ToLower(tokens[0]) == "set" {
+			if len(tokens) != 3 {
+				fmt.Println("Wrong command! Try again")
+				continue
+			}
+			property := strings.ToLower(tokens[1])
+			if property == "--country" {
+				settings.UserProfile.CountryCode = tokens[2]
+				fmt.Println("Country changed!")
+			} else if property == "--locale" {
+				settings.UserProfile.Locale = tokens[2]
+				fmt.Println("Locale changed!")
+			} else {
+				fmt.Println("Wrong command! Try again")
+				continue
+			}
+			settings.Save()
 		}
 	}
 }

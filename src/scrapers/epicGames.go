@@ -48,15 +48,15 @@ func (EpicGamesScraper) GetInfo(ch chan Result, id int, title string) {
 
 	req := graphql.NewRequest(query)
 	req.Var("keywords", title)
-	req.Var("country", strings.ToUpper(settings.CountryCode()))
-	req.Var("allowCountries", strings.ToUpper(settings.CountryCode()))
-	req.Var("locale", settings.Locale())
+	req.Var("country", strings.ToUpper(settings.UserProfile.CountryCode))
+	req.Var("allowCountries", strings.ToUpper(settings.UserProfile.CountryCode))
+	req.Var("locale", settings.UserProfile.Locale)
 	req.Var("withPrice", true)
 	req.Var("withMapping", true)
 	req.Var("freeGame", false)
 	req.Var("sortBy", "title")
 	req.Var("sortDir", "asc")
-	req.Var("count", settings.MaxCount())
+	req.Var("count", settings.MaxCount)
 
 	type Response struct {
 		Catalog struct {

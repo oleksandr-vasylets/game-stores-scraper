@@ -1,84 +1,79 @@
 package settings
 
 import (
-	"encoding/json"
+	"bufio"
+	"bytes"
+	"encoding/gob"
 	"fmt"
+	"io/ioutil"
 	"os"
-
-	"github.com/biter777/countries"
-	"golang.org/x/text/language"
 )
 
-func MaxCount() int {
-	return 100
-}
+const MaxCount = 100
 
-func CountryCode() string {
-	return settings.CountryCode
-}
-
-func Locale() string {
-	return settings.Locale
-}
-
-type profileSettings struct {
+type Profile struct {
 	CountryCode string
 	Locale      string
 }
 
-var settings profileSettings
+var UserProfile Profile
 
-const profileSettingsFilename = "settings.json"
+const userProfileFilename = "userProfile.bin"
 const defaultCountryCode = "ua"
 const defaultLocale = "uk"
 
 func init() {
-	settings = profileSettings{CountryCode: defaultCountryCode, Locale: defaultLocale}
-	if _, err := os.Stat(profileSettingsFilename); os.IsNotExist(err) {
-		fmt.Println("settings.json not found, loading fallback values")
-		file, err := os.Create(profileSettingsFilename)
+	UserProfile = Profile{CountryCode: defaultCountryCode, Locale: defaultLocale}
+	if _, err := os.Stat(userProfileFilename); os.IsNotExist(err) {
+		fmt.Println(userProfileFilename, "not found, loading fallback values")
+		file, err := os.Create(userProfileFilename)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return
 		}
-		defer file.Close()
+		file.Close()
 
-		data, err := json.MarshalIndent(settings, "", "    ")
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return
-		}
-
-		_, err = file.Write(data)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return
-		}
+		Save()
 		return
 	}
-	file, err := os.Open(profileSettingsFilename)
+	file, err := os.Open(userProfileFilename)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
 	defer file.Close()
 
-	decoder := json.NewDecoder(file)
-	err = decoder.Decode(&settings)
+	buffer := new(bytes.Buffer)
+	reader := bufio.NewReader(file)
+	_, err = reader.WriteTo(buffer)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
 
-	cc := countries.ByName(settings.CountryCode)
-	if len(settings.CountryCode) != 2 || !cc.IsValid() {
-		fmt.Printf("Invalid country code, fallback to \"%s\"\n", defaultCountryCode)
-		settings.CountryCode = defaultCountryCode
+	dec := gob.NewDecoder(buffer)
+	err = dec.Decode(&UserProfile)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
 	}
 
-	_, err = language.Parse(settings.Locale)
+	// TODO: Here it is assumed that the user have not tinkered with the file (deleted, modified etc.)
+}
+
+func Save() {
+	var buffer bytes.Buffer
+	enc := gob.NewEncoder(&buffer)
+	err := enc.Encode(UserProfile)
 	if err != nil {
-		fmt.Printf("Invalid locale, fallback to \"%s\"\n", defaultLocale)
-		settings.Locale = defaultLocale
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+
+	// 0644 means that we have permissions to read and write, but others are only permitted to read
+	err = ioutil.WriteFile(userProfileFilename, buffer.Bytes(), 0644)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
 	}
 }

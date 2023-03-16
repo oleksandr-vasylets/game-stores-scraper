@@ -21,7 +21,7 @@ func (GogScraper) GetName() string {
 
 func (scraper GogScraper) GetInfo(ch chan Result, id int, title string) {
 	const gameListQuery = "https://www.gog.com/games/ajax/filtered?mediaType=game&limit%d&search=%s"
-	url := fmt.Sprintf(gameListQuery, settings.MaxCount(), url.QueryEscape(title))
+	url := fmt.Sprintf(gameListQuery, settings.MaxCount, url.QueryEscape(title))
 	resp, err := http.Get(url)
 	if err != nil {
 		ch <- Result{Id: id, Info: nil, Error: err}
@@ -83,13 +83,13 @@ func (scraper GogScraper) GetInfo(ch chan Result, id int, title string) {
 }
 
 func (GogScraper) fetchPrices(ids []int64) ([]string, error) {
-	locale := currency.NewLocale(settings.Locale())
+	locale := currency.NewLocale(settings.UserProfile.Locale)
 	formatter := currency.NewFormatter(locale)
 	const priceQuery = "https://api.gog.com/products/%d/prices?countryCode=%s"
 
 	prices := make([]string, 0, len(ids))
 	for _, id := range ids {
-		url := fmt.Sprintf(priceQuery, id, settings.CountryCode())
+		url := fmt.Sprintf(priceQuery, id, settings.UserProfile.CountryCode)
 		resp, err := http.Get(url)
 		if err != nil {
 			return nil, err
