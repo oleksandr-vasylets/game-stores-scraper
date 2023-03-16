@@ -4,7 +4,7 @@ A simple CLI web scraper for fetching latest prices of games from different onli
 
 Example of usage:
 
-![Example of usage](doc/screenshot.jpg)
+![Example of usage](doc/findCommand.jpg)
   
 ### Installation
 
@@ -18,22 +18,20 @@ The prebuilt executable can be downloaded from *Releases* section here on GitHub
 - Launch the built executable (`web-scraper.exe`) and enjoy!
 
 ### User manual
-On the first launch of the application you will see the following message: `settings.json not found, loading fallback values`. This means that in the folder where the application is located a *settings.json* file was created. You can open this file with any text editor. It has the following structure:
+On the first launch of the application you will see the following message: `userProfile.bin not found, loading fallback values`. This means that in the folder where the application is located a `userProfile.bin` file was created. This file contains country code and locale of the user. When the file is created on the first launch `ua` and `uk` will be chosen as default (Glory to Ukraine!).
 
-    {
-        "CountryCode": "ua",
-        "Locale": "uk"
-    }
+Once open the application will display all available commands and prompt the user to enter a command:
+![Command prompt](doc/commandPrompt.jpg)
 
-These values can be changed and will be applied the next time you open the application.
-
-`CountryCode` - **must** be a valid country code (refer to this [list](https://countrycode.org/), where first two letters of the third column are valid country codes).
-
-`Locale` - **must** be a valid locale (refer to this [list](https://www.science.co.il/language/Locale-codes.php), where the third column contains valid locales).
-
-Both `CountryCode` and `Locale` are case-insensitive. If country code and/or locale are invalid, `ua` and `uk` will be chosen as default (Glory to Ukraine!).
-
-The application itself is really simple. Every time you open it, a prompt will ask you for a name of the game. Enter the name and press *Enter*. Fetching will take some time, and after it's done, the prices will be displayed. Press *Enter* to exit the application.
+1. `find [title]` where title must be a string (like `far cry 6`, **without the double quotes**).
+2. `get [--country | --locale]` allows to query currently selected country code or locale:
+![Get command](doc/getCommand.jpg)
+3. `set [--country | --locale] [value]` allows to change the country code or locale:
+![Set command](doc/setCommand.jpg)
+Country code **must** be valid (refer to this [list](https://countrycode.org/), where first two letters of the third column are valid country codes).
+Locale **must** be valid (refer to this [list](https://www.science.co.il/language/Locale-codes.php), where the third column contains valid locales).
+Otherwise, the country code and/or locale will be left unchanged.
+4. `exit` simply closes the application.
 
 ### Development progress
 Currently the application has very limited functionality, but I have plans for developing it much further!
