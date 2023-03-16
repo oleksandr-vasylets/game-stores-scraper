@@ -21,16 +21,22 @@ The prebuilt executable can be downloaded from *Releases* section here on GitHub
 On the first launch of the application you will see the following message: `userProfile.bin not found, loading fallback values`. This means that in the folder where the application is located a `userProfile.bin` file was created. This file contains country code and locale of the user. When the file is created on the first launch `ua` and `uk` will be chosen as default (Glory to Ukraine!).
 
 Once open the application will display all available commands and prompt the user to enter a command:
+
 ![Command prompt](doc/commandPrompt.jpg)
 
 1. `find [title]` where title must be a string (like `far cry 6`, **without the double quotes**).
 2. `get [--country | --locale]` allows to query currently selected country code or locale:
+
 ![Get command](doc/getCommand.jpg)
+
 3. `set [--country | --locale] [value]` allows to change the country code or locale:
+
 ![Set command](doc/setCommand.jpg)
+
 Country code **must** be valid (refer to this [list](https://countrycode.org/), where first two letters of the third column are valid country codes).
 Locale **must** be valid (refer to this [list](https://www.science.co.il/language/Locale-codes.php), where the third column contains valid locales).
 Otherwise, the country code and/or locale will be left unchanged.
+
 4. `exit` simply closes the application.
 
 ### Development progress
