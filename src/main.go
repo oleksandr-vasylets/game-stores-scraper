@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/rodaine/table"
+	"golang.org/x/text/language"
 )
 
 func find(title string) {
@@ -136,10 +137,20 @@ func main() {
 			}
 			property := strings.ToLower(tokens[1])
 			if property == "--country" {
+				_, err := language.ParseRegion(tokens[2])
+				if err != nil {
+					fmt.Println("Invalid country! Try again")
+					continue
+				}
 				settings.UserProfile.CountryCode = tokens[2]
 				fmt.Println("Country changed!")
 			} else if property == "--locale" {
-				settings.UserProfile.Locale = tokens[2]
+				tags, _, err := language.ParseAcceptLanguage(tokens[2])
+				if err != nil {
+					fmt.Println("Invalid locale! Try again")
+					continue
+				}
+				settings.UserProfile.Locale = tags[0].String()
 				fmt.Println("Locale changed!")
 			} else {
 				fmt.Println("Wrong command! Try again")
